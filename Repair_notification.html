@@ -1,0 +1,2063 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบการแจ้งซ่อมเครื่องจักร</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Sarabun', sans-serif; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .status-pending { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+        .status-progress { background: linear-gradient(135deg, #3b82f6, #1d4ed8); }
+        .status-completed { background: linear-gradient(135deg, #10b981, #059669); }
+        .status-cancelled { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        
+        /* Mobile optimizations */
+        @media (max-width: 640px) {
+            .line-clamp-2 {
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+            
+            /* Improve touch targets */
+            button, select, input, textarea {
+                min-height: 44px;
+            }
+            
+            /* Better scrolling on mobile */
+            .overflow-x-auto {
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+            
+            .overflow-x-auto::-webkit-scrollbar {
+                display: none;
+            }
+        }
+        
+        /* Tablet optimizations */
+        @media (min-width: 641px) and (max-width: 1024px) {
+            .container {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+        }
+    
+/* Lock fields look */
+[disabled]{background-color:#f3f4f6 !important; cursor:not-allowed;}
+</style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-lg border-b-4 border-blue-500">
+        <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+            <div class="flex justify-between items-center py-3 sm:py-4 lg:py-6">
+                <div class="flex items-center min-w-0 flex-1">
+                    <div class="bg-blue-500 p-2 sm:p-3 rounded-lg mr-2 sm:mr-4 flex-shrink-0">
+                        <svg class="w-6 h-6 sm:w-8 sm:h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="min-w-0">
+                        <h1 class="text-lg sm:text-xl lg:text-3xl font-bold text-gray-900 truncate">ระบบแจ้งซ่อมเครื่องจักร</h1>
+                        <p class="text-xs sm:text-sm text-gray-600 hidden sm:block">จัดการและติดตามงานซ่อมบำรุง</p>
+                    </div>
+                </div>
+                
+                <!-- Mobile Menu Button -->
+                <div class="flex items-center space-x-2 sm:hidden">
+                    <button onclick="toggleMobileMenu()" class="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Desktop Menu -->
+                <div class="hidden sm:flex space-x-2 lg:space-x-4">
+                    <button onclick="showSection('report')" class="bg-green-500 hover:bg-green-600 text-white px-3 py-2 lg:px-6 lg:py-3 rounded-lg font-medium transition-colors duration-200 shadow-lg text-sm lg:text-base">
+                        <span class="hidden lg:inline">+ แจ้งซ่อมใหม่</span>
+                        <span class="lg:hidden">+ แจ้งซ่อม</span>
+                    </button>
+                    <button onclick="showSection('dashboard')" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 lg:px-6 lg:py-3 rounded-lg font-medium transition-colors duration-200 shadow-lg text-sm lg:text-base">
+                        <span class="hidden lg:inline">📊 แดชบอร์ด</span>
+                        <span class="lg:hidden">📊</span>
+                    </button>
+                    <div class="relative">
+                        <button onclick="toggleDataMenu()" class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 lg:px-6 lg:py-3 rounded-lg font-medium transition-colors duration-200 shadow-lg text-sm lg:text-base">
+                            <span class="hidden lg:inline">⚙️ จัดการข้อมูล</span>
+                            <span class="lg:hidden">⚙️</span>
+                        </button>
+                        <div id="data-menu" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border z-50">
+                            <button onclick="exportData()" class="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-t-lg border-b text-sm">
+                                📤 ส่งออกข้อมูล (CSV)
+                            </button>
+                            <button onclick="importData()" class="w-full text-left px-4 py-3 hover:bg-gray-50 border-b text-sm">
+                                📥 นำเข้าข้อมูล
+                            </button>
+                            <button onclick="clearAllData()" class="w-full text-left px-4 py-3 hover:bg-red-50 text-red-600 rounded-b-lg text-sm">
+                                🗑️ ลบข้อมูลทั้งหมด
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mobile Menu -->
+            <div id="mobile-menu" class="hidden sm:hidden border-t border-gray-200 py-3">
+                <div class="flex flex-col space-y-2">
+                    <button onclick="showSection('report'); toggleMobileMenu()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-3 rounded-lg font-medium transition-colors text-left">
+                        + แจ้งซ่อมใหม่
+                    </button>
+                    <button onclick="showSection('dashboard'); toggleMobileMenu()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-3 rounded-lg font-medium transition-colors text-left">
+                        📊 แดชบอร์ด
+                    </button>
+                    <div class="relative">
+                        <button onclick="toggleMobileDataMenu()" class="w-full bg-purple-500 hover:bg-purple-600 text-white px-4 py-3 rounded-lg font-medium transition-colors text-left">
+                            ⚙️ จัดการข้อมูล
+                        </button>
+                        <div id="mobile-data-menu" class="hidden mt-2 bg-white rounded-lg shadow-lg border">
+                            <button onclick="exportData(); toggleMobileMenu()" class="w-full text-left px-4 py-3 hover:bg-gray-50 rounded-t-lg border-b text-sm">
+                                📤 ส่งออกข้อมูล (CSV)
+                            </button>
+                            <button onclick="importData(); toggleMobileMenu()" class="w-full text-left px-4 py-3 hover:bg-gray-50 border-b text-sm">
+                                📥 นำเข้าข้อมูล
+                            </button>
+                            <button onclick="clearAllData(); toggleMobileMenu()" class="w-full text-left px-4 py-3 hover:bg-red-50 text-red-600 rounded-b-lg text-sm">
+                                🗑️ ลบข้อมูลทั้งหมด
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
+            <div class="flex space-x-2 sm:space-x-4 lg:space-x-8 py-3 sm:py-4 overflow-x-auto">
+                <button onclick="showSection('dashboard')" class="nav-btn text-blue-600 border-b-2 border-blue-600 pb-2 font-medium whitespace-nowrap text-sm sm:text-base">
+                    <span class="hidden sm:inline">แดชบอร์ด</span>
+                    <span class="sm:hidden">📊</span>
+                </button>
+                <button onclick="showSection('report')" class="nav-btn text-gray-500 hover:text-blue-600 pb-2 font-medium transition-colors whitespace-nowrap text-sm sm:text-base">
+                    <span class="hidden sm:inline">แจ้งซ่อม</span>
+                    <span class="sm:hidden">📝</span>
+                </button>
+                <button onclick="showSection('manage')" class="nav-btn text-gray-500 hover:text-blue-600 pb-2 font-medium transition-colors whitespace-nowrap text-sm sm:text-base">
+                    <span class="hidden sm:inline">จัดการงาน</span>
+                    <span class="sm:hidden">⚙️</span>
+                </button>
+                <button onclick="showSection('history')" class="nav-btn text-gray-500 hover:text-blue-600 pb-2 font-medium transition-colors whitespace-nowrap text-sm sm:text-base">
+                    <span class="hidden sm:inline">ประวัติ</span>
+                    <span class="sm:hidden">📚</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
+        <!-- Dashboard Section -->
+        <div id="dashboard-section" class="section fade-in">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6 sm:mb-8">
+                <div class="bg-white rounded-xl shadow-lg p-3 sm:p-4 lg:p-6 border-l-4 border-yellow-500">
+                    <div class="flex items-center">
+                        <div class="bg-yellow-100 p-2 sm:p-3 rounded-full flex-shrink-0">
+                            <svg class="w-4 h-4 sm:w-6 sm:h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-2 sm:ml-4 min-w-0">
+                            <p class="text-xs sm:text-sm font-medium text-gray-600 truncate">รอดำเนินการ</p>
+                            <p class="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900" id="pending-count">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-3 sm:p-4 lg:p-6 border-l-4 border-blue-500">
+                    <div class="flex items-center">
+                        <div class="bg-blue-100 p-2 sm:p-3 rounded-full flex-shrink-0">
+                            <svg class="w-4 h-4 sm:w-6 sm:h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-2 sm:ml-4 min-w-0">
+                            <p class="text-xs sm:text-sm font-medium text-gray-600 truncate">กำลังดำเนินการ</p>
+                            <p class="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900" id="progress-count">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-3 sm:p-4 lg:p-6 border-l-4 border-green-500">
+                    <div class="flex items-center">
+                        <div class="bg-green-100 p-2 sm:p-3 rounded-full flex-shrink-0">
+                            <svg class="w-4 h-4 sm:w-6 sm:h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-2 sm:ml-4 min-w-0">
+                            <p class="text-xs sm:text-sm font-medium text-gray-600 truncate">เสร็จสิ้น</p>
+                            <p class="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900" id="completed-count">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-lg p-3 sm:p-4 lg:p-6 border-l-4 border-red-500">
+                    <div class="flex items-center">
+                        <div class="bg-red-100 p-2 sm:p-3 rounded-full flex-shrink-0">
+                            <svg class="w-4 h-4 sm:w-6 sm:h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </div>
+                        <div class="ml-2 sm:ml-4 min-w-0">
+                            <p class="text-xs sm:text-sm font-medium text-gray-600 truncate">ยกเลิก</p>
+                            <p class="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900" id="cancelled-count">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time Summary -->
+            <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 mb-6 sm:mb-8">
+                <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">สรุปเวลาการซ่อม</h2>
+                <div id="time-summary" class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                    <!-- Time summary will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Recent Reports -->
+            <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+                <h2 class="text-lg sm:text-xl font-bold text-gray-900 mb-4 sm:mb-6">รายการแจ้งซ่อมล่าสุด</h2>
+                <div id="recent-reports" class="space-y-3 sm:space-y-4">
+                    <!-- Reports will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Report Section -->
+        <div id="report-section" class="section hidden">
+            <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6 lg:p-8">
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">🛠 แจ้งซ่อมเครื่องจักร</h2>
+                <form id="repair-form" class="space-y-4 sm:space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                        <div class="lg:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">🗺 สถานที่ตั้งของเครื่อง</label>
+                            <div class="flex gap-2">
+<select id="machine-name" required
+  class="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base">
+  <option value="" disabled selected>-- กรุณาเลือก --</option>
+  <option value="SKIVING">SKIVING</option>
+  <option value="GULE">GULE</option>
+  <option value="WAREHOUSE">WAREHOUSE</option>
+  <option value="FB-RH-J72A">FB-RH-J72A</option>
+  <option value="FB-LH-J72A">FB-LH-J72A</option>
+  <option value="FC-RH-J72A">FC-RH-J72A</option>
+  <option value="FC-LH-J72A">FC-LH-J72A</option>
+  <option value="RB-RH-J72A">RB-RH-J72A</option>
+  <option value="RB-LH-J72A">RB-LH-J72A</option>
+  <option value="FB-J03M">FB-J03M</option>
+  <option value="FC-J03M">FC-J03M</option>
+  <option value="RB-J03M">RB-J03M</option>
+  <option value="RC-J03M">RC-J03M</option>
+  <option value="ISO-FIX">ISO-FIX</option>
+    
+</select>
+</div>
+                        </div>
+                        <div class="lg:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">👇รหัสเครื่องจักร</label>
+                            <div class="flex gap-2"><input type="text" id="machine-code" class="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base" inputmode="numeric" pattern="[0-9]*" placeholder="กรอกเฉพาะตัวเลข เช่น 1234"></div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">🏭แผนก *</label>
+                            <select id="department" required class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base">
+                                <option value="">เลือกแผนก</option>
+                                <option value="production">✂Supply</option>
+                                <option value="production">👗แผนกผลิต Sewing</option>
+                                <option value="maintenance">⚙แผนกซ่อมบำรุง</option>
+                                <option value="quality">👓แผนกควบคุมคุณภาพ</option>
+                                <option value="warehouse">📱แผนกคลังสินค้า</option>
+                                <option value="office">💻แผนกสำนักงาน</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">🚦ระดับความเร่งด่วน *</label>
+                            <select id="priority" required class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base">
+                                <option value="">เลือกระดับ</option>
+                                <option value="low">🔵ต่ำ</option>
+                                <option value="medium">🟢ปานกลาง</option>
+                                <option value="high">🟡สูง</option>
+                                <option value="urgent">🔴เร่งด่วน</option>
+                            </select>
+                        </div>
+                        <div class="lg:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">🙍‍♂️ผู้แจ้ง *</label>
+                            <input type="text" id="reporter" required class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">👨‍💻รายละเอียดปัญหา *</label>
+                        <textarea id="problem-description" required rows="4" class="w-full px-3 sm:px-4 py-2 sm:py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm sm:text-base" placeholder="อธิบายปัญหาที่พบ อาการ และสาเหตุที่คาดว่าจะเป็น"></textarea>
+                    </div>
+                    <div class="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4">
+                        <button type="button" onclick="resetForm()" class="px-4 sm:px-6 py-2 sm:py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors text-sm sm:text-base">
+                            ล้างข้อมูล
+                        </button>
+                        <button type="submit" class="px-4 sm:px-6 py-2 sm:py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-lg text-sm sm:text-base">
+                            ส่งแจ้งซ่อม
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Manage Section -->
+        <div id="manage-section" class="section hidden">
+            <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 space-y-3 sm:space-y-0">
+                    <h2 class="text-xl sm:text-2xl font-bold text-gray-900">จัดการงานซ่อม</h2>
+                    <div class="w-full sm:w-auto">
+                        <select id="status-filter" onchange="filterReports()" class="w-full sm:w-auto px-3 sm:px-4 py-2 border border-gray-300 rounded-lg text-sm sm:text-base">
+                            <option value="">ทุกสถานะ</option>
+                            <option value="pending">รอดำเนินการ</option>
+                            <option value="progress">กำลังดำเนินการ</option>
+                            <option value="completed">เสร็จสิ้น</option>
+                            <option value="cancelled">ยกเลิก</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="manage-reports" class="space-y-3 sm:space-y-4">
+                    <!-- Management reports will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- History Section -->
+        <div id="history-section" class="section hidden">
+            <div class="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">ประวัติการแจ้งซ่อม</h2>
+                <div id="history-reports" class="space-y-3 sm:space-y-4">
+                    <!-- History reports will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl p-6 sm:p-8 max-w-md w-full mx-auto text-center">
+            <div class="bg-green-100 p-3 sm:p-4 rounded-full w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4">
+                <svg class="w-6 h-6 sm:w-8 sm:h-8 text-green-600 mx-auto mt-0.5 sm:mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg sm:text-xl font-bold text-gray-900 mb-2">แจ้งซ่อมสำเร็จ!</h3>
+            <p class="text-sm sm:text-base text-gray-600 mb-6">หมายเลขแจ้งซ่อม: <span id="repair-id" class="font-bold text-blue-600"></span></p>
+            <button onclick="closeModal()" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-medium text-sm sm:text-base w-full sm:w-auto">
+                ตกลง
+            </button>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-2 sm:p-4">
+        <div class="bg-white rounded-xl p-4 sm:p-6 lg:p-8 max-w-4xl w-full mx-auto max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-gray-900">แก้ไขรายละเอียดการแจ้งซ่อม</h3>
+                <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <form id="edit-form" class="space-y-6">
+                <input type="hidden" id="edit-id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">สถานที่ตั้งของเครื่อง *</label>
+                        <input type="text" id="edit-machine-name" disabled required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">รหัสเครื่องจักร</label>
+                        <input type="text" id="edit-machine-code" disabled class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">แผนก *</label>
+                        <select id="edit-department" disabled required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">เลือกแผนก</option>
+                            <option value="production">✂แผนก Supply</option>
+                            <option value="production">👗แผนกผลิต Sewing</option>
+                            <option value="maintenance">⚙แผนกซ่อมบำรุง</option>
+                            <option value="quality">👓แผนกควบคุมคุณภาพ</option>
+                            <option value="warehouse">📳แผนกคลังสินค้า</option>
+                            <option value="office">💻แผนกสำนักงาน</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ระดับความเร่งด่วน *</label>
+                        <select id="edit-priority" disabled required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">เลือกระดับ</option>
+                            <option value="low">🔵ต่ำ</option>
+                            <option value="medium">🟢ปานกลาง</option>
+                            <option value="high">🟡สูง</option>
+                            <option value="urgent">🔴เร่งด่วน</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ผู้แจ้ง *</label>
+                        <input type="text" id="edit-reporter" disabled required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">เบอร์โทรติดต่อ</label>
+                        <input type="tel" id="edit-phone" disabled class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">สถานะ</label>
+                        <select id="edit-status" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="pending">รอดำเนินการ</option>
+                            <option value="progress">กำลังดำเนินการ</option>
+                            <option value="completed">เสร็จสิ้น</option>
+                            <option value="cancelled">ยกเลิก</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ผู้รับผิดชอบ</label>
+                        <select id="edit-assigned-to" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">เลือกผู้รับผิดชอบ</option>
+                            <option value="นายอิสระ">นายอิสระ</option>
+                            <option value="นายสุริวงศ์">นายสุริวงศ์</option>
+                            <option value="นายปรีดา">นายปรีดา</option>
+                            <option value="นายอรุชา">นายอรุชา</option>
+                            <option value="นายอดิเรก">นายอดิเรก</option>
+                            <option value="นายจิรายุ">นายจิรายุ</option>
+                            <option value="นายณัฐดนัย">นายณัฐดนัย</option>
+                            <option value="นายสุรชัย">นายสุรชัย</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">ผู้อนุมัติปิดงาน</label>
+                        <select id="edit-approved-by" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="">เลือกผู้อนุมัติ</option>
+                            <option value="หัวหน้าแผนก Supply">หัวหน้าแผนก Supply</option>
+                            <option value="หัวหน้าแผนก Sewing">หัวหน้าแผนก Sewing</option>
+                            <option value="หัวหน้าแผนก Warehouse">หัวหน้าแผนก Warehouse</option>
+                            <option value="หัวหน้าแผนกซ่อมบำรุง">หัวหน้าแผนกซ่อมบำรุง</option>
+                            <option value="ผู้จัดการโรงงาน">ผู้จัดการโรงงาน</option>
+                            <option value="วิศวกรหัวหน้า">วิศวกรหัวหน้า</option>
+                            <option value="ผู้อำนวยการ">ผู้อำนวยการ</option>
+                        </select>
+                    </div>
+                    <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                        <h5 class="font-medium text-blue-900 mb-2">📅 ข้อมูลเวลา (อัตโนมัติ)</h5>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="text-blue-700 font-medium">เวลาแจ้งซ่อม:</span>
+                                <div id="display-report-time" class="text-blue-900 mt-1">-</div>
+                            </div>
+                            <div>
+                                <span class="text-blue-700 font-medium">เวลาเริ่มซ่อม:</span>
+                                <div id="display-start-time" class="text-blue-900 mt-1">-</div>
+                            </div>
+                            <div>
+                                <span class="text-blue-700 font-medium">เวลาซ่อมเสร็จ:</span>
+                                <div id="display-completed-time" class="text-blue-900 mt-1">-</div>
+                            </div>
+                            <div>
+                                <span class="text-blue-700 font-medium">เวลารวม:</span>
+                                <div id="display-total-time" class="text-blue-900 mt-1 font-semibold">-</div>
+                            </div>
+                        </div>
+                        <div class="mt-3 text-xs text-blue-600">
+                            💡 เวลาจะถูกบันทึกอัตโนมัติเมื่อเปลี่ยนสถานะ ช่างไม่ต้องกรอกเวลาเอง
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">รายละเอียดปัญหา *</label>
+                    <textarea id="edit-problem-description" disabled required rows="4" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">อะไหล่ที่ใช้เปลี่ยน</label>
+                    <div id="parts-container" class="space-y-3 mb-4">
+                        <!-- Parts will be added dynamically -->
+                    </div>
+                    <button type="button" onclick="addPartField()" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm font-medium transition-colors">
+                        + เพิ่มอะไหล่
+                    </button>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">หมายเหตุ / การดำเนินการ</label>
+                    <textarea id="edit-notes" required rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="เพิ่มหมายเหตุ สาเหตุ หรือการดำเนินการ"></textarea>
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" onclick="closeEditModal()" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium transition-colors">
+                        ยกเลิก
+                    </button>
+                    <button id="edit-save-btn" type="submit" class="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors shadow-lg opacity-50 cursor-not-allowed" disabled>บันทึกการแก้ไข</button>
+                
+        <p id="edit-req-hint" class="mt-3 text-sm text-red-600 hidden">
+            กรุณากรอก <span class="font-semibold">สถานะ</span>, <span class="font-semibold">ผู้รับผิดชอบ</span>, <span class="font-semibold">ผู้อนุมัติปิดงาน</span> และ <span class="font-semibold">หมายเหตุ / การดำเนินการ</span> ให้ครบถ้วนก่อนบันทึก
+        </p>
+                </div>
+            </form>
+    
+        </div>
+    </div>
+
+    <!-- Assign Modal -->
+    <div id="assign-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 max-w-md mx-4">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-900">มอบหมายงาน</h3>
+                <button onclick="closeAssignModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <form id="assign-form">
+                <input type="hidden" id="assign-id">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">เลือกผู้รับผิดชอบ *</label>
+                    <select id="assign-technician" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">เลือกช่าง</option>
+                         <option value="นายอิสระ">นายอิสระ</option>
+                            <option value="นายสุริวงศ์">นายสุริวงศ์</option>
+                            <option value="นายปรีดา">นายปรีดา</option>
+                            <option value="นายอรุชา">นายอรุชา</option>
+                            <option value="นายอดิเรก">นายอดิเรก</option>
+                            <option value="นายจิรายุ">นายจิรายุ</option>
+                            <option value="นายณัฐดนัย">นายณัฐดนัย</option>
+                            <option value="นายสุรชัย">นายสุรชัย</option>
+                    </select>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">หมายเหตุ</label>
+                    <textarea id="assign-notes" rows="3" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="เพิ่มหมายเหตุสำหรับการมอบหมาย"></textarea>
+                </div>
+                <div class="flex justify-end space-x-4">
+                    <button type="button" onclick="closeAssignModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium">
+                        ยกเลิก
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium">
+                        มอบหมาย
+                    </button>
+                
+        <p id="edit-req-hint" class="mt-3 text-sm text-red-600 hidden">
+            กรุณากรอก <span class="font-semibold">สถานะ</span>, <span class="font-semibold">ผู้รับผิดชอบ</span>, <span class="font-semibold">ผู้อนุมัติปิดงาน</span> และ <span class="font-semibold">หมายเหตุ / การดำเนินการ</span> ให้ครบถ้วนก่อนบันทึก
+        </p>
+                </div>
+            </form>
+    
+        </div>
+    </div>
+
+    <!-- Time Log Modal -->
+    <div id="timelog-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 max-w-4xl mx-4 max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-gray-900">ประวัติการดำเนินงาน</h3>
+                <button onclick="closeTimeLogModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="timelog-content" class="space-y-4">
+                <!-- Time log entries will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 max-w-md mx-4 text-center">
+            <div class="bg-red-100 p-4 rounded-full w-16 h-16 mx-auto mb-4">
+                <svg class="w-8 h-8 text-red-600 mx-auto mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold text-gray-900 mb-2">ยืนยันการลบ</h3>
+            <p class="text-gray-600 mb-6">คุณต้องการลบรายการแจ้งซ่อม <span id="delete-id" class="font-bold text-red-600"></span> หรือไม่?</p>
+            <div class="flex justify-center space-x-4">
+                <button onclick="closeDeleteModal()" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium">
+                    ยกเลิก
+                </button>
+                <button onclick="confirmDelete()" class="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium">
+                    ลบ
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+// === Google Apps Script API integration ===
+const API_URL = 'https://script.google.com/macros/s/AKfycbz6338bRXb9_Psg3qf7WnDIgXRvDbhEz6ImhGimzLKFcWXXjZ4rOSBGkkiNASRgRGC3MQ/exec';
+
+/** Send UPSERT report + optional new logs */
+async function gasUpsert(report, newLogs) {
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify({
+        type: 'UPSERT_REPORT',
+        report,
+        newLogs: Array.isArray(newLogs) ? newLogs : []
+      })
+    });
+  } catch (err) { console.error('GAS upsert error:', err); }
+}
+
+async function gasDelete(id) {
+  try {
+    await fetch(API_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      body: JSON.stringify({ type: 'DELETE_REPORT', id })
+    });
+  } catch (err) { console.error('GAS delete error:', err); }
+}
+// === end GAS integration ===
+// === ID generator (collision-proof across users) ===
+function generateUniqueId() {
+  // RP + yyyymmddHHMMSS + 3 random digits
+  const d = new Date();
+  const ymdhms = d.toISOString().replace(/[-:TZ.]/g,'').slice(0,14);
+  const rand = Math.floor(Math.random()*1000).toString().padStart(3,'0');
+  return 'RP' + ymdhms + rand;
+}
+// === end ID generator ===
+
+
+        // Sample data - เริ่มต้นด้วยข้อมูลเปล่า
+        let repairReports = [];
+        let nextId = 1;
+
+        // Local Storage Functions
+        function saveToLocalStorage() {
+            try {
+                const data = {
+                    repairReports: repairReports,
+                    nextId: nextId,
+                    lastSaved: new Date().toISOString()
+                };
+                localStorage.setItem('repairSystemData', JSON.stringify(data));
+            } catch (error) {
+                console.error('Error saving to localStorage:', error);
+            }
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const savedData = localStorage.getItem('repairSystemData');
+                if (savedData) {
+                    const data = JSON.parse(savedData);
+                    repairReports = data.repairReports || [];
+                    nextId = data.nextId || 1;
+                    
+                    // Show welcome message with loaded data count
+                    if (repairReports.length > 0) {
+                        showWelcomeMessage(repairReports.length, data.lastSaved);
+                    }
+                    
+                    return true;
+                }
+            } catch (error) {
+                console.error('Error loading from localStorage:', error);
+                // Reset to default if corrupted
+                repairReports = [];
+                nextId = 1;
+            }
+            return false;
+        }
+
+        function showWelcomeMessage(count, lastSaved) {
+            const welcomeDiv = document.createElement('div');
+            welcomeDiv.className = 'fixed top-4 right-4 bg-blue-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 transform transition-all duration-500';
+            welcomeDiv.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <div>
+                        <div class="font-semibold">ยินดีต้อนรับกลับมา!</div>
+                        <div class="text-sm opacity-90">โหลดข้อมูล ${count} รายการเรียบร้อย</div>
+                        <div class="text-xs opacity-75">อัพเดทล่าสุด: ${formatDateTime(lastSaved)}</div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(welcomeDiv);
+            
+            setTimeout(() => {
+                welcomeDiv.style.transform = 'translateX(100%)';
+                setTimeout(() => welcomeDiv.remove(), 500);
+            }, 4000);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load saved data first
+            loadFromLocalStorage();
+            
+            showSection('dashboard');
+            updateDashboard();
+            renderRecentReports();
+            renderManageReports();
+            renderHistoryReports();
+        });
+
+        // Navigation
+        function showSection(section) {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
+            
+            // Show selected section
+            document.getElementById(section + '-section').classList.remove('hidden');
+            
+            // Update navigation
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('text-blue-600', 'border-b-2', 'border-blue-600');
+                btn.classList.add('text-gray-500');
+            });
+            
+            // Find and update the clicked button
+            const buttons = document.querySelectorAll('.nav-btn');
+            const sectionMap = ['dashboard', 'report', 'manage', 'history'];
+            const index = sectionMap.indexOf(section);
+            
+            if (index !== -1 && buttons[index]) {
+                buttons[index].classList.remove('text-gray-500');
+                buttons[index].classList.add('text-blue-600', 'border-b-2', 'border-blue-600');
+            }
+        }
+
+        // Form handling
+        document.getElementById('repair-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const now = new Date();
+            const formData = {
+                id: generateUniqueId(),
+                machineName: document.getElementById('machine-name').value,
+                machineCode: formatMachineCode(document.getElementById("machine-code").value),
+                department: document.getElementById('department').value,
+                priority: document.getElementById('priority').value,
+                reporter: document.getElementById('reporter').value,
+                problem: document.getElementById('problem-description').value,
+                status: 'pending',
+                date: now.toISOString().split('T')[0],
+                reportTime: now.toISOString(), // เวลาแจ้งซ่อม (อัตโนมัติ)
+                startTime: null, // เวลาเริ่มซ่อม (อัตโนมัติเมื่อเปลี่ยนเป็น progress)
+                completedTime: null, // เวลาเสร็จสิ้น (อัตโนมัติเมื่อเปลี่ยนเป็น completed)
+                totalRepairTime: null, // เวลารวมในการซ่อม
+                assignedTo: '',
+                notes: '',
+                approvedBy: '',
+                parts: [],
+                timeLog: [
+                    { 
+                        action: 'แจ้งซ่อม', 
+                        timestamp: now.toISOString(), 
+                        user: document.getElementById('reporter').value, 
+                        details: `แจ้งปัญหา: ${document.getElementById('problem-description').value.substring(0, 50)}${document.getElementById('problem-description').value.length > 50 ? '...' : ''} - เวลาแจ้ง: ${formatDateTime(now.toISOString())}`,
+                        autoTime: true
+                    }
+                ]
+            };
+            
+            repairReports.unshift(formData);
+            nextId++;
+            
+            // Save to localStorage
+            saveToLocalStorage();
+            
+            
+            // Sync to Google Sheets
+            gasUpsert(formData, formData.timeLog);
+            // Show success modal
+            document.getElementById('repair-id').textContent = formData.id;
+            document.getElementById('success-modal').classList.remove('hidden');
+            document.getElementById('success-modal').classList.add('flex');
+            
+            // Reset form
+            resetForm();
+            
+            // Update displays
+            updateDashboard();
+            renderRecentReports();
+            renderManageReports();
+            renderHistoryReports();
+        });
+
+        function resetForm() {
+            document.getElementById('repair-form').reset();
+        }
+
+        function closeModal() {
+            document.getElementById('success-modal').classList.add('hidden');
+            document.getElementById('success-modal').classList.remove('flex');
+            showSection('dashboard');
+        }
+
+        // Dashboard updates
+        function updateDashboard() {
+            const counts = {
+                pending: repairReports.filter(r => r.status === 'pending').length,
+                progress: repairReports.filter(r => r.status === 'progress').length,
+                completed: repairReports.filter(r => r.status === 'completed').length,
+                cancelled: repairReports.filter(r => r.status === 'cancelled').length
+            };
+            
+            document.getElementById('pending-count').textContent = counts.pending;
+            document.getElementById('progress-count').textContent = counts.progress;
+            document.getElementById('completed-count').textContent = counts.completed;
+            document.getElementById('cancelled-count').textContent = counts.cancelled;
+            
+            // Update time summary
+            updateTimeSummary();
+        }
+
+        function updateTimeSummary() {
+            const completedReports = repairReports.filter(r => r.status === 'completed' && r.completedTime);
+            const ongoingReports = repairReports.filter(r => r.status === 'progress');
+            
+            let avgRepairTime = 'ไม่มีข้อมูล';
+            let fastestRepair = 'ไม่มีข้อมูล';
+            let currentOngoing = ongoingReports.length;
+            
+            if (completedReports.length > 0) {
+                // คำนวณเวลาเฉลี่ย (แปลงเป็นนาที)
+                const totalMinutes = completedReports.reduce((sum, report) => {
+                    const startTime = report.startTime || report.reportTime;
+                    return sum + calculateMinutes(startTime, report.completedTime);
+                }, 0);
+                const avgMinutes = Math.round(totalMinutes / completedReports.length);
+                avgRepairTime = formatMinutesToDuration(avgMinutes);
+                
+                // หาเวลาที่เร็วที่สุด
+                const fastestMinutes = Math.min(...completedReports.map(report => {
+                    const startTime = report.startTime || report.reportTime;
+                    return calculateMinutes(startTime, report.completedTime);
+                }));
+                fastestRepair = formatMinutesToDuration(fastestMinutes);
+            }
+            
+            const summaryContainer = document.getElementById('time-summary');
+            summaryContainer.innerHTML = `
+                <div class="text-center p-4 bg-blue-50 rounded-lg">
+                    <div class="text-2xl font-bold text-blue-600 mb-2">${avgRepairTime}</div>
+                    <div class="text-sm text-blue-800">เวลาเฉลี่ยในการซ่อม</div>
+                    <div class="text-xs text-blue-600 mt-1">${completedReports.length} งานที่เสร็จแล้ว</div>
+                </div>
+                <div class="text-center p-4 bg-green-50 rounded-lg">
+                    <div class="text-2xl font-bold text-green-600 mb-2">${fastestRepair}</div>
+                    <div class="text-sm text-green-800">เวลาเร็วที่สุด</div>
+                    <div class="text-xs text-green-600 mt-1">สถิติที่ดีที่สุด</div>
+                </div>
+                <div class="text-center p-4 bg-orange-50 rounded-lg">
+                    <div class="text-2xl font-bold text-orange-600 mb-2">${currentOngoing}</div>
+                    <div class="text-sm text-orange-800">งานที่กำลังดำเนินการ</div>
+                    <div class="text-xs text-orange-600 mt-1">ณ ขณะนี้</div>
+                </div>
+            `;
+        }
+
+        function calculateMinutes(startTime, endTime) {
+            if (!startTime || !endTime) return 0;
+            const start = new Date(startTime);
+            const end = new Date(endTime);
+            return Math.floor((end - start) / (1000 * 60));
+        }
+
+        function formatMinutesToDuration(minutes) {
+            if (minutes < 60) {
+                return `${minutes} นาที`;
+            } else if (minutes < 1440) { // less than 24 hours
+                const hours = Math.floor(minutes / 60);
+                const remainingMinutes = minutes % 60;
+                return `${hours} ชม.${remainingMinutes > 0 ? ` ${remainingMinutes} นาที` : ''}`;
+            } else {
+                const days = Math.floor(minutes / 1440);
+                const remainingHours = Math.floor((minutes % 1440) / 60);
+                return `${days} วัน${remainingHours > 0 ? ` ${remainingHours} ชม.` : ''}`;
+            }
+        }
+
+        function renderRecentReports() {
+            const container = document.getElementById('recent-reports');
+            const recent = repairReports.slice(0, 5);
+            
+            if (recent.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12">
+                        <div class="bg-gray-100 p-4 rounded-full w-16 h-16 mx-auto mb-4">
+                            <svg class="w-8 h-8 text-gray-400 mx-auto mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">ยังไม่มีรายการแจ้งซ่อม</h3>
+                        <p class="text-gray-600 mb-4">เริ่มต้นใช้งานระบบโดยการแจ้งซ่อมเครื่องจักรครั้งแรก</p>
+                        <button onclick="showSection('report')" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                            + แจ้งซ่อมใหม่
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = recent.map(report => `
+                <div class="border border-gray-200 rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-2 mb-2">
+                                <span class="font-bold text-blue-600 text-sm sm:text-base">${report.id}</span>
+                                <span class="px-2 py-1 rounded-full text-xs font-medium ${getStatusClass(report.status)}">${getStatusText(report.status)}</span>
+                                <span class="px-2 py-1 rounded-full text-xs font-medium ${getPriorityClass(report.priority)}">${getPriorityText(report.priority)}</span>
+                            </div>
+                            <h3 class="font-semibold text-gray-900 mb-1 text-sm sm:text-base truncate">${report.machineName}</h3>
+                            <p class="text-gray-600 text-xs sm:text-sm mb-2 line-clamp-2">${report.problem}</p>
+                            <div class="flex flex-col sm:flex-row sm:items-center text-xs sm:text-sm text-gray-500 space-y-1 sm:space-y-0 sm:space-x-4">
+                                <span class="truncate">📅 ${formatDateTime(report.reportTime)}</span>
+                                <span class="truncate">👤 ${report.reporter}</span>
+                                <span class="truncate">🏢 ${getDepartmentText(report.department)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderManageReports() {
+            const container = document.getElementById('manage-reports');
+            const filter = document.getElementById('status-filter')?.value || '';
+            const filtered = filter ? repairReports.filter(r => r.status === filter) : repairReports;
+            
+            if (filtered.length === 0) {
+                const message = filter ? 
+                    `ไม่พบรายการแจ้งซ่อมที่มีสถานะ "${getStatusText(filter)}"` : 
+                    'ยังไม่มีรายการแจ้งซ่อมในระบบ';
+                
+                container.innerHTML = `
+                    <div class="text-center py-12">
+                        <div class="bg-gray-100 p-4 rounded-full w-16 h-16 mx-auto mb-4">
+                            <svg class="w-8 h-8 text-gray-400 mx-auto mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">${message}</h3>
+                        <p class="text-gray-600 mb-4">เริ่มต้นใช้งานระบบโดยการแจ้งซ่อมเครื่องจักรครั้งแรก</p>
+                        <button onclick="showSection('report')" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                            + แจ้งซ่อมใหม่
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = filtered.map(report => `
+                <div class="border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 hover:shadow-md transition-shadow">
+                    <div class="flex flex-col lg:flex-row lg:justify-between lg:items-start mb-4 space-y-4 lg:space-y-0">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-2 mb-3">
+                                <span class="font-bold text-blue-600 text-base sm:text-lg">${report.id}</span>
+                                <span class="px-2 py-1 rounded-full text-xs font-medium ${getStatusClass(report.status)}">${getStatusText(report.status)}</span>
+                                <span class="px-2 py-1 rounded-full text-xs font-medium ${getPriorityClass(report.priority)}">${getPriorityText(report.priority)}</span>
+                            </div>
+                            <h3 class="font-semibold text-gray-900 text-base sm:text-lg mb-2 break-words">${report.machineName} (${report.machineCode || 'ไม่ระบุ'})</h3>
+                            <p class="text-gray-600 mb-3 text-sm sm:text-base break-words">${report.problem}</p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm text-gray-600">
+                                <div class="truncate">📅 วันที่แจ้ง: ${formatDateTime(report.reportTime)}</div>
+                                <div class="truncate">👤 ผู้แจ้ง: ${report.reporter}</div>
+                                <div class="truncate">🏢 แผนก: ${getDepartmentText(report.department)}</div>
+                                ${report.startTime ? `<div class="truncate">🚀 เริ่มซ่อม: ${formatDateTime(report.startTime)}</div>` : ''}
+                                ${report.completedTime ? `<div class="truncate">✅ ซ่อมเสร็จ: ${formatDateTime(report.completedTime)}</div>` : ''}
+                                ${report.status === 'completed' && report.completedTime ? `<div class="col-span-1 sm:col-span-2"><span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">⏱️ เวลาในการซ่อม: ${calculateDuration(report.startTime || report.reportTime, report.completedTime)}</span></div>` : ''}
+                            </div>
+                            ${report.assignedTo ? `<div class="mt-2 text-xs sm:text-sm text-blue-600 truncate">🔧 ผู้รับผิดชอบ: ${report.assignedTo}</div>` : ''}
+                            ${report.approvedBy ? `<div class="mt-2 text-xs sm:text-sm text-green-600 truncate">✅ ผู้อนุมัติ: ${report.approvedBy}</div>` : ''}
+                            ${report.parts && report.parts.length > 0 ? `<div class="mt-2 text-xs sm:text-sm text-purple-600 break-words">🔧 อะไหล่: ${report.parts.map(p => `${p.name} (${p.quantity} ชิ้น)`).join(', ')}</div>` : ''}
+                            ${report.notes ? `<div class="mt-2 text-xs sm:text-sm text-gray-600 break-words">📝 หมายเหตุ: ${report.notes}</div>` : ''}
+                        </div>
+                        <div class="flex flex-row lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2 lg:ml-4 overflow-x-auto lg:overflow-x-visible">
+                            <select onchange="updateStatus('${report.id}', this.value)" class="px-2 py-1 lg:px-3 lg:py-2 border border-gray-300 rounded text-xs lg:text-sm whitespace-nowrap flex-shrink-0">
+                                <option value="pending" ${report.status === 'pending' ? 'selected' : ''}>รอดำเนินการ</option>
+                                <option value="progress" ${report.status === 'progress' ? 'selected' : ''}>กำลังดำเนินการ</option>
+                                <option value="completed" ${report.status === 'completed' ? 'selected' : ''}>เสร็จสิ้น</option>
+                                <option value="cancelled" ${report.status === 'cancelled' ? 'selected' : ''}>ยกเลิก</option>
+                            </select>
+                            <button onclick="editReport('${report.id}')" class="px-2 py-1 lg:px-3 lg:py-2 bg-blue-500 text-white rounded text-xs lg:text-sm hover:bg-blue-600 transition-colors whitespace-nowrap flex-shrink-0">
+                                <span class="lg:hidden">✏️</span>
+                                <span class="hidden lg:inline">✏️ แก้ไข</span>
+                            </button>
+                            <button onclick="assignTechnician('${report.id}')" class="px-2 py-1 lg:px-3 lg:py-2 bg-green-500 text-white rounded text-xs lg:text-sm hover:bg-green-600 transition-colors whitespace-nowrap flex-shrink-0">
+                                <span class="lg:hidden">👤</span>
+                                <span class="hidden lg:inline">👤 มอบหมาย</span>
+                            </button>
+                            <button onclick="viewTimeLog('${report.id}')" class="px-2 py-1 lg:px-3 lg:py-2 bg-purple-500 text-white rounded text-xs lg:text-sm hover:bg-purple-600 transition-colors whitespace-nowrap flex-shrink-0">
+                                <span class="lg:hidden">⏰</span>
+                                <span class="hidden lg:inline">⏰ ประวัติ</span>
+                            </button>
+                            <button onclick="deleteReport('${report.id}')" class="px-2 py-1 lg:px-3 lg:py-2 bg-red-500 text-white rounded text-xs lg:text-sm hover:bg-red-600 transition-colors whitespace-nowrap flex-shrink-0">
+                                <span class="lg:hidden">🗑️</span>
+                                <span class="hidden lg:inline">🗑️ ลบ</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderHistoryReports() {
+            const container = document.getElementById('history-reports');
+            const completed = repairReports.filter(r => r.status === 'completed' || r.status === 'cancelled');
+            
+            if (completed.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12">
+                        <div class="bg-gray-100 p-4 rounded-full w-16 h-16 mx-auto mb-4">
+                            <svg class="w-8 h-8 text-gray-400 mx-auto mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">ยังไม่มีประวัติการซ่อม</h3>
+                        <p class="text-gray-600 mb-4">ประวัติจะแสดงเมื่อมีงานซ่อมที่เสร็จสิ้นหรือยกเลิกแล้ว</p>
+                        <button onclick="showSection('report')" class="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-lg font-medium transition-colors">
+                            + แจ้งซ่อมใหม่
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = completed.map(report => `
+                <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <span class="font-bold text-blue-600">${report.id}</span>
+                                <span class="px-3 py-1 rounded-full text-sm font-medium ${getStatusClass(report.status)}">${getStatusText(report.status)}</span>
+                                <span class="px-3 py-1 rounded-full text-sm font-medium ${getPriorityClass(report.priority)}">${getPriorityText(report.priority)}</span>
+                            </div>
+                            <h3 class="font-semibold text-gray-900 mb-1">${report.machineName}</h3>
+                            <p class="text-gray-600 text-sm mb-2">${report.problem}</p>
+                            <div class="flex items-center text-sm text-gray-500 space-x-4 flex-wrap">
+                                <span>📅 แจ้ง: ${formatDateTime(report.reportTime)}</span>
+                                ${report.startTime ? `<span>🚀 เริ่ม: ${formatDateTime(report.startTime)}</span>` : ''}
+                                ${report.completedTime ? `<span>✅ เสร็จ: ${formatDateTime(report.completedTime)}</span>` : ''}
+                                <span>👤 ${report.reporter}</span>
+                                <span>🏢 ${getDepartmentText(report.department)}</span>
+                                ${report.assignedTo ? `<span>🔧 ${report.assignedTo}</span>` : ''}
+                                ${report.approvedBy ? `<span>✅ ${report.approvedBy}</span>` : ''}
+                            </div>
+                            ${report.status === 'completed' && report.completedTime ? `<div class="mt-2"><span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">⏱️ เวลาในการซ่อมทั้งหมด: ${calculateDuration(report.startTime || report.reportTime, report.completedTime)}</span></div>` : ''}
+                            ${report.parts && report.parts.length > 0 ? `<div class="mt-2 text-sm text-purple-600">🔧 อะไหล่: ${report.parts.map(p => `${p.name} (${p.quantity} ชิ้น)`).join(', ')}</div>` : ''}
+                            ${report.notes ? `<div class="mt-2 text-sm text-gray-600">📝 ${report.notes}</div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Utility functions
+        function updateStatus(id, newStatus) {
+            const report = repairReports.find(r => r.id === id);
+            if (report) {
+                const oldStatus = report.status;
+                report.status = newStatus;
+                
+                // Add time log entry with automatic timestamp
+                const now = new Date().toISOString();
+                const statusText = getStatusText(newStatus);
+                
+                if (newStatus === 'progress' && !report.startTime) {
+                    // อัตโนมัติบันทึกเวลาเริ่มซ่อม
+                    report.startTime = now;
+                    report.timeLog.push({
+                        action: 'เริ่มซ่อม',
+                        timestamp: now,
+                        user: 'ระบบอัตโนมัติ',
+                        details: `เริ่มดำเนินการซ่อมแซม - เวลาเริ่ม: ${formatDateTime(now)}`,
+                        autoTime: true
+                    });
+                } else if (newStatus === 'completed') {
+                    if (!report.completedTime) {
+                        // อัตโนมัติบันทึกเวลาเสร็จสิ้น
+                        report.completedTime = now;
+                        
+                        // คำนวณเวลารวมในการซ่อม (ใช้เวลาเริ่มซ่อม หรือเวลาแจ้งซ่อม)
+                        const startTime = report.startTime || report.reportTime;
+                        if (startTime) {
+                            report.totalRepairTime = calculateDuration(startTime, report.completedTime);
+                        }
+                        
+                        report.timeLog.push({
+                            action: 'ซ่อมเสร็จ',
+                            timestamp: now,
+                            user: 'ระบบอัตโนมัติ',
+                            details: `งานซ่อมเสร็จสิ้น - เวลาเสร็จ: ${formatDateTime(now)}${report.totalRepairTime ? ` | ใช้เวลารวม: ${report.totalRepairTime}` : ''}`,
+                            autoTime: true
+                        });
+                    }
+                } else if (newStatus === 'cancelled') {
+                    // บันทึกเวลายกเลิก
+                    report.timeLog.push({
+                        action: 'ยกเลิกงาน',
+                        timestamp: now,
+                        user: 'ระบบอัตโนมัติ',
+                        details: `ยกเลิกงานซ่อม - เวลายกเลิก: ${formatDateTime(now)}`,
+                        autoTime: true
+                    });
+                } else {
+                    report.timeLog.push({
+                        action: 'เปลี่ยนสถานะ',
+                        timestamp: now,
+                        user: 'ระบบอัตโนมัติ',
+                        details: `เปลี่ยนสถานะจาก "${getStatusText(oldStatus)}" เป็น "${statusText}" - เวลา: ${formatDateTime(now)}`,
+                        autoTime: true
+                    });
+                }
+                
+                // Save to localStorage
+                saveToLocalStorage();
+                
+                
+                // Sync status change to Google Sheets
+                (function(){ const lastLog = (report.timeLog && report.timeLog[report.timeLog.length-1]) || null; gasUpsert(report, lastLog ? [lastLog] : []); })();
+                updateDashboard();
+                renderRecentReports();
+                renderManageReports();
+                renderHistoryReports();
+            }
+        }
+
+        function viewTimeLog(id) {
+            const report = repairReports.find(r => r.id === id);
+            if (!report) return;
+            
+            const content = document.getElementById('timelog-content');
+            content.innerHTML = `
+                <div class="bg-blue-50 p-4 rounded-lg mb-6">
+                    <h4 class="font-bold text-lg text-blue-900 mb-2">${report.id} - ${report.machineName}</h4>
+                    <p class="text-blue-700">${report.problem}</p>
+                    <div class="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                        <div><strong>ผู้แจ้ง:</strong> ${report.reporter}</div>
+                        <div><strong>แผนก:</strong> ${getDepartmentText(report.department)}</div>
+                        <div><strong>ระดับ:</strong> ${getPriorityText(report.priority)}</div>
+                        ${report.assignedTo ? `<div><strong>ผู้รับผิดชอบ:</strong> ${report.assignedTo}</div>` : ''}
+                        ${report.startTime && report.completedTime ? `<div><strong>ใช้เวลา:</strong> ${calculateDuration(report.startTime, report.completedTime)}</div>` : ''}
+                        <div><strong>สถานะปัจจุบัน:</strong> <span class="px-2 py-1 rounded text-xs ${getStatusClass(report.status)}">${getStatusText(report.status)}</span></div>
+                    </div>
+                </div>
+                
+                <div class="space-y-3">
+                    ${report.timeLog.map((log, index) => `
+                        <div class="flex items-start space-x-4 p-4 ${log.autoTime ? 'bg-blue-50 border-l-4 border-blue-400' : 'bg-gray-50'} rounded-lg">
+                            <div class="flex-shrink-0 w-12 h-12 ${log.autoTime ? 'bg-blue-100' : 'bg-gray-100'} rounded-full flex items-center justify-center">
+                                ${log.autoTime ? 
+                                    '<svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>' :
+                                    `<span class="text-gray-600 font-bold text-sm">${index + 1}</span>`
+                                }
+                            </div>
+                            <div class="flex-1">
+                                <div class="flex items-center space-x-3 mb-2">
+                                    <h5 class="font-semibold ${log.autoTime ? 'text-blue-900' : 'text-gray-900'}">${log.action}</h5>
+                                    <span class="text-sm ${log.autoTime ? 'text-blue-600' : 'text-gray-500'}">${formatDateTime(log.timestamp)}</span>
+                                    ${log.autoTime ? '<span class="px-2 py-1 bg-blue-200 text-blue-800 text-xs rounded-full">อัตโนมัติ</span>' : ''}
+                                </div>
+                                <p class="${log.autoTime ? 'text-blue-700' : 'text-gray-700'} mb-1">${log.details}</p>
+                                <p class="text-sm ${log.autoTime ? 'text-blue-600' : 'text-blue-600'}">โดย: ${log.user}</p>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            document.getElementById('timelog-modal').classList.remove('hidden');
+            document.getElementById('timelog-modal').classList.add('flex');
+        }
+
+        function closeTimeLogModal() {
+            document.getElementById('timelog-modal').classList.add('hidden');
+            document.getElementById('timelog-modal').classList.remove('flex');
+        }
+
+        function editReport(id) {
+            const report = repairReports.find(r => r.id === id);
+            if (!report) return;
+            
+            // Fill edit form
+            document.getElementById('edit-id').value = report.id;
+            document.getElementById('edit-machine-name').value = report.machineName;
+            document.getElementById('edit-machine-code').value = report.machineCode || '';
+            document.getElementById('edit-department').value = report.department;
+            document.getElementById('edit-priority').value = report.priority;
+            document.getElementById('edit-reporter').value = report.reporter;
+            document.getElementById('edit-phone').value = report.phone || '';
+            document.getElementById('edit-status').value = report.status;
+            document.getElementById('edit-assigned-to').value = report.assignedTo || '';
+            document.getElementById('edit-approved-by').value = report.approvedBy || '';
+            document.getElementById('edit-problem-description').value = report.problem;
+            document.getElementById('edit-notes').value = report.notes || '';
+            
+            // Display time information (read-only)
+            document.getElementById('display-report-time').textContent = formatDateTime(report.reportTime);
+            document.getElementById('display-start-time').textContent = report.startTime ? formatDateTime(report.startTime) : 'ยังไม่เริ่มซ่อม';
+            document.getElementById('display-completed-time').textContent = report.completedTime ? formatDateTime(report.completedTime) : 'ยังไม่เสร็จ';
+            
+            // Calculate and display total time
+            if (report.completedTime && (report.startTime || report.reportTime)) {
+                const startTime = report.startTime || report.reportTime;
+                const totalTime = calculateDuration(startTime, report.completedTime);
+                document.getElementById('display-total-time').textContent = totalTime;
+            } else if (report.startTime) {
+                const currentTime = new Date().toISOString();
+                const elapsedTime = calculateDuration(report.startTime, currentTime);
+                document.getElementById('display-total-time').textContent = `${elapsedTime} (กำลังดำเนินการ)`;
+            } else {
+                document.getElementById('display-total-time').textContent = 'ยังไม่เริ่มซ่อม';
+            }
+            
+            // Load parts data
+            loadPartsToForm(report.parts || []);
+            
+            // Show modal
+            document.getElementById('edit-modal').classList.remove('hidden');
+            document.getElementById('edit-modal').classList.add('flex');
+        }
+
+        function assignTechnician(id) {
+            document.getElementById('assign-id').value = id;
+            document.getElementById('assign-technician').value = '';
+            document.getElementById('assign-notes').value = '';
+            
+            document.getElementById('assign-modal').classList.remove('hidden');
+            document.getElementById('assign-modal').classList.add('flex');
+        }
+
+        function deleteReport(id) {
+            document.getElementById('delete-id').textContent = id;
+            window.deleteReportId = id;
+            
+            document.getElementById('delete-modal').classList.remove('hidden');
+            document.getElementById('delete-modal').classList.add('flex');
+        }
+
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+            document.getElementById('edit-modal').classList.remove('flex');
+        }
+
+        function closeAssignModal() {
+            document.getElementById('assign-modal').classList.add('hidden');
+            document.getElementById('assign-modal').classList.remove('flex');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('delete-modal').classList.add('hidden');
+            document.getElementById('delete-modal').classList.remove('flex');
+        }
+
+        function confirmDelete() {
+            const id = window.deleteReportId;
+            const index = repairReports.findIndex(r => r.id === id);
+            
+            if (index !== -1) {
+                repairReports.splice(index, 1);
+                
+                // Save to localStorage
+                saveToLocalStorage();
+                
+                
+                // Sync deletion to Google Sheets
+                gasDelete(id);
+                updateDashboard();
+                renderRecentReports();
+                renderManageReports();
+                renderHistoryReports();
+            }
+            
+            closeDeleteModal();
+        }
+
+        // Parts database
+        const partsDatabase = [
+            { name: 'หัวพิมพ์ 3D', category: 'เครื่องพิมพ์' },
+            { name: 'แบตเตอรี่ 12V 100Ah', category: 'ไฟฟ้า' },
+           
+        ];
+
+        // Parts management functions
+        function addPartField() {
+            const container = document.getElementById('parts-container');
+            const partIndex = container.children.length;
+            
+            const partDiv = document.createElement('div');
+            partDiv.className = 'border border-gray-200 rounded-lg p-4 bg-gray-50';
+            partDiv.innerHTML = `
+                <div class="flex justify-between items-center mb-3">
+                    <h4 class="font-medium text-gray-900">อะไหล่ที่ ${partIndex + 1}</h4>
+                    <button type="button" onclick="removePart(this)" class="text-red-500 hover:text-red-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="relative">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">ชื่ออะไหล่ *</label>
+                        <div class="relative">
+                            <input type="text" class="part-name w-full px-3 py-2 pr-10 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                                   placeholder="พิมพ์เพื่อค้นหา..." 
+                                   oninput="filterParts(this)" 
+                                   onfocus="showPartsList(this)"
+                                   onblur="hidePartsList(this)"
+                                   required>
+                            <button type="button" onclick="togglePartsList(this)" class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="parts-dropdown absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto hidden">
+                            <div class="p-2 border-b bg-gray-50">
+                                <div class="text-xs text-gray-600 mb-2">หมวดหมู่อะไหล่</div>
+                                <div class="flex flex-wrap gap-1">
+                                    <button type="button" onclick="filterByCategory(this, '')" class="category-btn px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors">ทั้งหมด</button>
+                                    <button type="button" onclick="filterByCategory(this, 'ไฟฟ้า')" class="category-btn px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">ไฟฟ้า</button>
+                                    <button type="button" onclick="filterByCategory(this, 'มอเตอร์')" class="category-btn px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">มอเตอร์</button>
+                                    <button type="button" onclick="filterByCategory(this, 'ลูกปืน')" class="category-btn px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">ลูกปืน</button>
+                                    <button type="button" onclick="filterByCategory(this, 'สายพาน')" class="category-btn px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors">สายพาน</button>
+                                </div>
+                            </div>
+                            <div class="parts-list">
+                                ${generatePartsOptions()}
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">จำนวน *</label>
+                        <input type="number" class="part-quantity w-full px-3 py-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" min="1" value="1" required>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(partDiv);
+        }
+
+        function generatePartsOptions() {
+            return partsDatabase.map(part => `
+                <div class="part-option px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0" 
+                     onclick="selectPart(this, '${part.name}')"
+                     data-category="${part.category}"
+                     data-name="${part.name.toLowerCase()}">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-medium text-gray-900 text-sm">${part.name}</div>
+                            <div class="text-xs text-gray-500">${part.category}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filterParts(input) {
+            const dropdown = input.closest('.relative').querySelector('.parts-dropdown');
+            const partsList = dropdown.querySelector('.parts-list');
+            const searchTerm = input.value.toLowerCase();
+            
+            if (searchTerm.length === 0) {
+                partsList.innerHTML = generatePartsOptions();
+                return;
+            }
+            
+            const filteredParts = partsDatabase.filter(part => 
+                part.name.toLowerCase().includes(searchTerm) || 
+                part.category.toLowerCase().includes(searchTerm)
+            );
+            
+            partsList.innerHTML = filteredParts.map(part => `
+                <div class="part-option px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0" 
+                     onclick="selectPart(this, '${part.name}')"
+                     data-category="${part.category}"
+                     data-name="${part.name.toLowerCase()}">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-medium text-gray-900 text-sm">${part.name}</div>
+                            <div class="text-xs text-gray-500">${part.category}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            if (filteredParts.length === 0) {
+                partsList.innerHTML = '<div class="px-3 py-4 text-center text-gray-500 text-sm">ไม่พบอะไหล่ที่ค้นหา</div>';
+            }
+        }
+
+        function filterByCategory(button, category) {
+            const dropdown = button.closest('.parts-dropdown');
+            const partsList = dropdown.querySelector('.parts-list');
+            const input = dropdown.closest('.relative').querySelector('.part-name');
+            
+            // Update category button styles
+            dropdown.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-100', 'text-blue-700');
+                btn.classList.add('bg-gray-100', 'text-gray-700');
+            });
+            button.classList.remove('bg-gray-100', 'text-gray-700');
+            button.classList.add('bg-blue-100', 'text-blue-700');
+            
+            // Filter parts by category
+            const filteredParts = category ? 
+                partsDatabase.filter(part => part.category === category) : 
+                partsDatabase;
+            
+            partsList.innerHTML = filteredParts.map(part => `
+                <div class="part-option px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0" 
+                     onclick="selectPart(this, '${part.name}')"
+                     data-category="${part.category}"
+                     data-name="${part.name.toLowerCase()}">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-medium text-gray-900 text-sm">${part.name}</div>
+                            <div class="text-xs text-gray-500">${part.category}</div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            // Clear search input
+            input.value = '';
+        }
+
+        function selectPart(element, name) {
+            const partDiv = element.closest('.border');
+            const nameInput = partDiv.querySelector('.part-name');
+            const dropdown = partDiv.querySelector('.parts-dropdown');
+            
+            nameInput.value = name;
+            
+            dropdown.classList.add('hidden');
+            
+            // Show success animation
+            element.classList.add('bg-green-100');
+            setTimeout(() => {
+                element.classList.remove('bg-green-100');
+            }, 300);
+        }
+
+        function showPartsList(input) {
+            const dropdown = input.closest('.relative').querySelector('.parts-dropdown');
+            dropdown.classList.remove('hidden');
+        }
+
+        function hidePartsList(input) {
+            setTimeout(() => {
+                const dropdown = input.closest('.relative').querySelector('.parts-dropdown');
+                dropdown.classList.add('hidden');
+            }, 200);
+        }
+
+        function togglePartsList(button) {
+            const dropdown = button.closest('.relative').querySelector('.parts-dropdown');
+            dropdown.classList.toggle('hidden');
+        }
+
+        function removePart(button) {
+            button.closest('div.border').remove();
+            updatePartNumbers();
+        }
+
+        function updatePartNumbers() {
+            const container = document.getElementById('parts-container');
+            const parts = container.children;
+            
+            for (let i = 0; i < parts.length; i++) {
+                const title = parts[i].querySelector('h4');
+                if (title) {
+                    title.textContent = `อะไหล่ที่ ${i + 1}`;
+                }
+            }
+        }
+
+        function loadPartsToForm(parts) {
+            const container = document.getElementById('parts-container');
+            container.innerHTML = '';
+            
+            if (parts && parts.length > 0) {
+                parts.forEach(part => {
+                    addPartField();
+                    const lastPart = container.lastElementChild;
+                    lastPart.querySelector('.part-name').value = part.name || '';
+                    lastPart.querySelector('.part-quantity').value = part.quantity || 1;
+                });
+            }
+        }
+
+        function getPartsFromForm() {
+            const container = document.getElementById('parts-container');
+            const parts = [];
+            
+            Array.from(container.children).forEach(partDiv => {
+                const name = partDiv.querySelector('.part-name').value.trim();
+                const quantity = parseInt(partDiv.querySelector('.part-quantity').value) || 1;
+                
+                if (name) {
+                    parts.push({ name, quantity });
+                }
+            });
+            
+            return parts;
+        }
+
+        // Edit form submission
+        document.getElementById('edit-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('edit-id').value;
+            const report = repairReports.find(r => r.id === id);
+            
+            if (report) {
+                const __prevLen = (report.timeLog ? report.timeLog.length : 0);
+                const oldStatus = report.status;
+                const newStatus = document.getElementById('edit-status').value;
+                const now = new Date().toISOString();
+                if ((newStatus === 'progress' || newStatus === 'completed') && !report.startTime) { report.startTime = report.reportTime || now; }
+                
+                // Update allowed fields only (lock basic fields)
+                report.assignedTo = document.getElementById('edit-assigned-to').value;
+                report.approvedBy = document.getElementById('edit-approved-by').value;
+                report.notes = document.getElementById('edit-notes').value;
+                report.parts = getPartsFromForm();
+                // ระบบเวลาอัตโนมัติ - ไม่ใช้ค่าจากฟอร์ม
+                if (oldStatus !== newStatus) {
+                    report.status = newStatus;
+                    
+                    if (newStatus === 'progress' && !report.startTime) {
+                        // อัตโนมัติบันทึกเวลาเริ่มซ่อม
+                        report.startTime = now;
+                        report.timeLog.push({
+                            action: 'เริ่มซ่อม',
+                            timestamp: now,
+                            user: report.assignedTo || 'ช่างเทคนิค',
+                            details: `เริ่มดำเนินการซ่อมแซม - เวลาเริ่ม: ${formatDateTime(now)}`,
+                            autoTime: true
+                        });
+                    } else if (newStatus === 'completed') {
+                        if (!report.completedTime) {
+                            // อัตโนมัติบันทึกเวลาเสร็จสิ้น
+                            report.completedTime = now;
+                            
+                            // คำนวณเวลารวมในการซ่อม
+                            const startTime = report.startTime || report.reportTime;
+                            if (startTime) {
+                                report.totalRepairTime = calculateDuration(startTime, report.completedTime);
+                            }
+                            
+                            report.timeLog.push({
+                                action: 'ซ่อมเสร็จ',
+                                timestamp: now,
+                                user: report.assignedTo || 'ช่างเทคนิค',
+                                details: `งานซ่อมเสร็จสิ้น - เวลาเสร็จ: ${formatDateTime(now)}${report.totalRepairTime ? ` | ใช้เวลารวม: ${report.totalRepairTime}` : ''}`,
+                                autoTime: true
+                            });
+                        }
+                    } else if (newStatus === 'cancelled') {
+                        report.timeLog.push({
+                            action: 'ยกเลิกงาน',
+                            timestamp: now,
+                            user: report.assignedTo || 'ผู้ดูแลระบบ',
+                            details: `ยกเลิกงานซ่อม - เวลายกเลิก: ${formatDateTime(now)}`,
+                            autoTime: true
+                        });
+                    } else {
+                        report.timeLog.push({
+                            action: 'เปลี่ยนสถานะ',
+                            timestamp: now,
+                            user: report.assignedTo || 'ผู้ดูแลระบบ',
+                            details: `เปลี่ยนสถานะจาก "${getStatusText(oldStatus)}" เป็น "${getStatusText(newStatus)}" - เวลา: ${formatDateTime(now)}`,
+                            autoTime: true
+                        });
+                    }
+                } else {
+                    // ถ้าไม่เปลี่ยนสถานะ แต่มีการแก้ไขข้อมูลอื่น
+                    report.timeLog.push({
+                        action: 'แก้ไขข้อมูล',
+                        timestamp: now,
+                        user: report.assignedTo || 'ผู้ดูแลระบบ',
+                        details: `แก้ไขข้อมูลรายการซ่อม - เวลา: ${formatDateTime(now)}`,
+                        autoTime: true
+                    });
+                }
+                
+                // Save to localStorage
+                saveToLocalStorage();
+                
+                
+                // Sync EDIT changes to Google Sheets
+                (function(){ const __newLogs = (report.timeLog||[]).slice(__prevLen); gasUpsert(report, __newLogs); })();
+                updateDashboard();
+                renderRecentReports();
+                renderManageReports();
+                renderHistoryReports();
+                
+                closeEditModal();
+                
+                // Show success message with time info
+                let message = 'บันทึกการแก้ไขเรียบร้อยแล้ว!';
+                if (newStatus === 'progress' && oldStatus !== 'progress') {
+                    message += `\n⏰ เวลาเริ่มซ่อม: ${formatDateTime(now)}`;
+                } else if (newStatus === 'completed' && oldStatus !== 'completed') {
+                    message += `\n✅ เวลาซ่อมเสร็จ: ${formatDateTime(now)}`;
+                    if (report.totalRepairTime) {
+                        message += `\n⏱️ ใช้เวลารวม: ${report.totalRepairTime}`;
+                    }
+                }
+                alert(message);
+            }
+        });
+
+        // Assign form submission
+        document.getElementById('assign-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const id = document.getElementById('assign-id').value;
+            const technician = document.getElementById('assign-technician').value;
+            const notes = document.getElementById('assign-notes').value;
+            
+            const report = repairReports.find(r => r.id === id);
+            
+            if (report) {
+                const __prevLenA = (report.timeLog ? report.timeLog.length : 0);
+                const now = new Date().toISOString();
+                report.assignedTo = technician;
+                report.status = 'progress';
+                
+                // อัตโนมัติบันทึกเวลาเริ่มซ่อม
+                if (notes) {
+                    report.notes = report.notes ? report.notes + '\n' + notes : notes;
+                }
+                
+                // Add time log entries with automatic timestamps
+                report.timeLog.push({
+                    action: 'มอบหมายงาน',
+                    timestamp: now,
+                    user: 'หัวหน้าช่าง',
+                    details: `มอบหมายงานให้ ${technician}${notes ? ` - ${notes}` : ''} - เวลามอบหมาย: ${formatDateTime(now)}`,
+                    autoTime: true
+                });
+                
+                report.timeLog.push({
+                    action: 'เริ่มซ่อม',
+                    timestamp: now,
+                    user: 'ระบบอัตโนมัติ',
+                    details: `เริ่มดำเนินการซ่อมแซม - เวลาเริ่ม: ${formatDateTime(now)}`,
+                    autoTime: true
+                });
+                
+                // Save to localStorage
+                saveToLocalStorage();
+                
+                
+                // Sync ASSIGN changes to Google Sheets
+                (function(){ const __newLogs = (report.timeLog||[]).slice(__prevLenA); gasUpsert(report, __newLogs); })();
+                updateDashboard();
+                renderRecentReports();
+                renderManageReports();
+                renderHistoryReports();
+                
+                closeAssignModal();
+                
+                // Show success message
+                alert(`มอบหมายงานให้ ${technician} เรียบร้อยแล้ว!\nเวลาเริ่มซ่อม: ${formatDateTime(now)}`);
+            }
+        });
+
+        function filterReports() {
+            renderManageReports();
+        }
+
+        function getStatusClass(status) {
+            const classes = {
+                pending: 'bg-yellow-100 text-yellow-800',
+                progress: 'bg-blue-100 text-blue-800',
+                completed: 'bg-green-100 text-green-800',
+                cancelled: 'bg-red-100 text-red-800'
+            };
+            return classes[status] || 'bg-gray-100 text-gray-800';
+        }
+
+        function getStatusText(status) {
+            const texts = {
+                pending: 'รอดำเนินการ',
+                progress: 'กำลังดำเนินการ',
+                completed: 'เสร็จสิ้น',
+                cancelled: 'ยกเลิก'
+            };
+            return texts[status] || status;
+        }
+
+        function getPriorityClass(priority) {
+            const classes = {
+                low: 'bg-gray-100 text-gray-800',
+                medium: 'bg-yellow-100 text-yellow-800',
+                high: 'bg-orange-100 text-orange-800',
+                urgent: 'bg-red-100 text-red-800'
+            };
+            return classes[priority] || 'bg-gray-100 text-gray-800';
+        }
+
+        function getPriorityText(priority) {
+            const texts = {
+                low: 'ต่ำ',
+                medium: 'ปานกลาง',
+                high: 'สูง',
+                urgent: 'เร่งด่วน'
+            };
+            return texts[priority] || priority;
+        }
+
+        function getDepartmentText(department) {
+            const texts = {
+                production: 'แผนกผลิต',
+                maintenance: 'แผนกซ่อมบำรุง',
+                quality: 'แผนกควบคุมคุณภาพ',
+                warehouse: 'แผนกคลังสินค้า',
+                office: 'แผนกสำนักงาน'
+            };
+            return texts[department] || department;
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('th-TH', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        function formatDateTime(dateTimeString) {
+            if (!dateTimeString) return 'ไม่ระบุ';
+            const date = new Date(dateTimeString);
+            return date.toLocaleDateString('th-TH', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function calculateDuration(startTime, endTime) {
+            if (!startTime || !endTime) return 'ไม่ระบุ';
+            
+            const start = new Date(startTime);
+            const end = new Date(endTime);
+            const diffMs = end - start;
+            
+            const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+            
+            let result = '';
+            if (days > 0) result += `${days} วัน `;
+            if (hours > 0) result += `${hours} ชม. `;
+            if (minutes > 0) result += `${minutes} นาที`;
+            
+            return result.trim() || '< 1 นาที';
+        }
+
+        function formatDateTimeForInput(dateTimeString) {
+            if (!dateTimeString) return '';
+            const date = new Date(dateTimeString);
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        }
+
+        // Mobile Menu Functions
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        function toggleMobileDataMenu() {
+            const menu = document.getElementById('mobile-data-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        // Data Management Functions
+        function toggleDataMenu() {
+            const menu = document.getElementById('data-menu');
+            menu.classList.toggle('hidden');
+            
+            // Close menu when clicking outside
+            document.addEventListener('click', function closeMenu(e) {
+                if (!e.target.closest('#data-menu') && !e.target.closest('button[onclick="toggleDataMenu()"]')) {
+                    menu.classList.add('hidden');
+                    document.removeEventListener('click', closeMenu);
+                }
+            });
+        }
+
+        function exportData() {
+            try {
+                // Create CSV headers
+                const headers = [
+                    'รหัสแจ้งซ่อม',
+                    'ชื่อเครื่องจักร',
+                    'รหัสเครื่อง',
+                    'แผนก',
+                    'ระดับความเร่งด่วน',
+                    'ผู้แจ้ง',
+                    'รายละเอียดปัญหา',
+                    'สถานะ',
+                    'วันที่แจ้ง',
+                    'เวลาเริ่มซ่อม',
+                    'เวลาซ่อมเสร็จ',
+                    'เวลารวมในการซ่อม',
+                    'ผู้รับผิดชอบ',
+                    'ผู้อนุมัติ',
+                    'อะไหล่ที่ใช้',
+                    'หมายเหตุ'
+                ];
+                
+                // Create CSV rows
+                const csvRows = [headers.join(',')];
+                
+                repairReports.forEach(report => {
+                    const row = [
+                        `"${report.id || ''}"`,
+                        `"${report.machineName || ''}"`,
+                        `"${report.machineCode || ''}"`,
+                        `"${getDepartmentText(report.department) || ''}"`,
+                        `"${getPriorityText(report.priority) || ''}"`,
+                        `"${report.reporter || ''}"`,
+                        `"${(report.problem || '').replace(/"/g, '""')}"`,
+                        `"${getStatusText(report.status) || ''}"`,
+                        `"${report.reportTime ? formatDateTime(report.reportTime) : ''}"`,
+                        `"${report.startTime ? formatDateTime(report.startTime) : ''}"`,
+                        `"${report.completedTime ? formatDateTime(report.completedTime) : ''}"`,
+                        `"${report.totalRepairTime || (report.completedTime && (report.startTime || report.reportTime) ? calculateDuration(report.startTime || report.reportTime, report.completedTime) : '')}"`,
+                        `"${report.assignedTo || ''}"`,
+                        `"${report.approvedBy || ''}"`,
+                        `"${report.parts && report.parts.length > 0 ? report.parts.map(p => `${p.name} (${p.quantity} ชิ้น)`).join('; ') : ''}"`,
+                        `"${(report.notes || '').replace(/"/g, '""')}"`
+                    ];
+                    csvRows.push(row.join(','));
+                });
+                
+                // Create CSV content with BOM for proper Thai character display
+                const csvContent = '\uFEFF' + csvRows.join('\n');
+                const dataBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(dataBlob);
+                link.download = `repair-system-data-${new Date().toISOString().split('T')[0]}.csv`;
+                link.click();
+                
+                // Hide menu
+                document.getElementById('data-menu').classList.add('hidden');
+                
+                // Show success message
+                showDataMessage(`ส่งออกข้อมูล ${repairReports.length} รายการเป็น CSV เรียบร้อยแล้ว!`, 'success');
+                
+            } catch (error) {
+                console.error('Export error:', error);
+                showDataMessage('เกิดข้อผิดพลาดในการส่งออกข้อมูล', 'error');
+            }
+        }
+
+        function importData() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        
+                        // Validate data structure
+                        if (!data.repairReports || !Array.isArray(data.repairReports)) {
+                            throw new Error('Invalid data format');
+                        }
+                        
+                        // Confirm import
+                        const confirmImport = confirm(
+                            `พบข้อมูล ${data.repairReports.length} รายการ\n` +
+                            `วันที่ส่งออก: ${data.exportDate ? formatDateTime(data.exportDate) : 'ไม่ระบุ'}\n\n` +
+                            `ต้องการนำเข้าข้อมูลนี้หรือไม่?\n` +
+                            `(ข้อมูลเดิมจะถูกเขียนทับ)`
+                        );
+                        
+                        if (confirmImport) {
+                            repairReports = data.repairReports;
+                            nextId = data.nextId || (repairReports.length + 1);
+                            
+                            // Save to localStorage
+                            saveToLocalStorage();
+                            
+                            // Update displays
+                            updateDashboard();
+                            renderRecentReports();
+                            renderManageReports();
+                            renderHistoryReports();
+                            
+                            showDataMessage(`นำเข้าข้อมูล ${data.repairReports.length} รายการเรียบร้อยแล้ว!`, 'success');
+                        }
+                        
+                    } catch (error) {
+                        console.error('Import error:', error);
+                        showDataMessage('ไฟล์ข้อมูลไม่ถูกต้อง กรุณาตรวจสอบไฟล์', 'error');
+                    }
+                };
+                
+                reader.readAsText(file);
+            };
+            
+            input.click();
+            
+            // Hide menu
+            document.getElementById('data-menu').classList.add('hidden');
+        }
+
+        function clearAllData() {
+            const confirmClear = confirm(
+                `⚠️ คำเตือน!\n\n` +
+                `คุณต้องการลบข้อมูลทั้งหมด ${repairReports.length} รายการหรือไม่?\n\n` +
+                `การดำเนินการนี้ไม่สามารถย้อนกลับได้!\n` +
+                `แนะนำให้ส่งออกข้อมูลสำรองก่อน`
+            );
+            
+            if (confirmClear) {
+                const doubleConfirm = confirm(
+                    `ยืนยันอีกครั้ง!\n\n` +
+                    `ลบข้อมูลทั้งหมด ${repairReports.length} รายการ?\n` +
+                    `(กด OK เพื่อลบ, Cancel เพื่อยกเลิก)`
+                );
+                
+                if (doubleConfirm) {
+                    repairReports = [];
+                    nextId = 1;
+                    
+                    // Clear localStorage
+                    localStorage.removeItem('repairSystemData');
+                    
+                    // Update displays
+                    updateDashboard();
+                    renderRecentReports();
+                    renderManageReports();
+                    renderHistoryReports();
+                    
+                    showDataMessage('ลบข้อมูลทั้งหมดเรียบร้อยแล้ว', 'success');
+                }
+            }
+            
+            // Hide menu
+            document.getElementById('data-menu').classList.add('hidden');
+        }
+
+        function showDataMessage(message, type) {
+            const messageDiv = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+            const icon = type === 'success' ? 
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>' :
+                '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>';
+            
+            messageDiv.className = `fixed top-4 right-4 ${bgColor} text-white px-6 py-4 rounded-lg shadow-lg z-50 transform transition-all duration-500`;
+            messageDiv.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        ${icon}
+                    </svg>
+                    <div class="font-medium">${message}</div>
+                </div>
+            `;
+            
+            document.body.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                messageDiv.style.transform = 'translateX(100%)';
+                setTimeout(() => messageDiv.remove(), 500);
+            }, 3000);
+        }
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96ed5f20645740fb',t:'MTc1NTE0MjIwNS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();
+// === Edit form required validation ===
+function checkEditRequired() {
+  const statusEl = document.getElementById('edit-status');
+  const assignedEl = document.getElementById('edit-assigned-to');
+  const approvedEl = document.getElementById('edit-approved-by');
+  const notesEl = document.getElementById('edit-notes');
+  const saveBtn = document.getElementById('edit-save-btn');
+  const hint = document.getElementById('edit-req-hint');
+
+  const ok = Boolean(statusEl && statusEl.value) && Boolean(assignedEl && assignedEl.value) && Boolean(approvedEl && approvedEl.value) && Boolean(notesEl && notesEl.value.trim());
+  if (saveBtn) {
+    if (ok) {
+      saveBtn.disabled = false;
+      saveBtn.classList.remove('opacity-50','cursor-not-allowed');
+      if (hint) hint.classList.add('hidden');
+    } else {
+      saveBtn.disabled = true;
+      saveBtn.classList.add('opacity-50','cursor-not-allowed');
+      if (hint) hint.classList.remove('hidden');
+    }
+  }
+}
+
+['edit-status','edit-assigned-to','edit-approved-by','edit-notes'].forEach(id => {
+  document.addEventListener('input', (e) => {
+    if (e.target && e.target.id === id) {
+      checkEditRequired();
+    }
+  }, true);
+});
+
+// call when opening edit modal too
+if (typeof editReport === 'function') {
+  const __orig_editReport = editReport;
+  editReport = function(id){
+    __orig_editReport(id);
+    setTimeout(checkEditRequired, 0);
+  };
+} else {
+  // fallback
+  document.addEventListener('DOMContentLoaded', checkEditRequired);
+}
+
+/* === Machine Code helpers: digits-only + NC.NO prefix === */
+function onlyDigits(v){ return (v||'').toString().replace(/\D+/g,''); }
+function formatMachineCode(raw){
+  const d = onlyDigits(raw);
+  return d ? 'NC.NO' + d : '';
+}
+// Restrict typing in machine-code field to digits, show digits only while typing
+document.addEventListener('input', (e)=>{
+  if(e && e.target && e.target.id === 'machine-code'){
+    const el = e.target;
+    const caret = el.selectionStart;
+    const dig = onlyDigits(el.value);
+    el.value = dig;
+    try{ el.setSelectionRange(caret, caret); }catch(_){}
+  }
+}, true);
+</script></body>
+</html>
